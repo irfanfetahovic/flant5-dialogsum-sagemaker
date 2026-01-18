@@ -1,0 +1,16 @@
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+data/jsonl/
+./peft-dialogue-summary-model/
+./peft-dialogue-summary-training-*/
+./dialogue-summary-training-*/
+.DS_Store
+*.ipynb_checkpoints

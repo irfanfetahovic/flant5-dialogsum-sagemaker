@@ -1,0 +1,29 @@
+aws:
+  region: us-east-1
+  bucket: llm-training-bucket
+
+dataset:
+  name: knkarthick/dialogsum
+  train_size: 125
+  val_size: 32
+
+model:
+  name: google/flan-t5-base
+  peft:
+    r: 8
+    lora_alpha: 16
+    target_modules: ["q", "v"]
+    dropout: 0.05
+
+training:
+  instance_type: ml.m5.2xlarge
+  instance_count: 1
+  epochs: 3
+  batch_size: 2
+  learning_rate: 1e-3
+  use_spot: true
+  max_wait: 3600
+  
+inference:
+  max_new_tokens: 200
+  num_beams: 1
