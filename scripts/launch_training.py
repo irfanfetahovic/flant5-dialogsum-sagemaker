@@ -1,6 +1,7 @@
 """
 Launch SageMaker training job.
 """
+
 import argparse
 import logging
 import yaml
@@ -20,15 +21,15 @@ def load_config(config_path: str = "config.yaml"):
 
 def main(args):
     """Launch training job."""
-    
+
     # Load configuration
     config = load_config()
-    
+
     # Initialize SageMaker
     session, role, bucket, region = initialize_sagemaker()
-    
+
     logger.info(f"Launching training job: {args.job_name}")
-    
+
     # Get config values
     model_name = config["model"]["name"]
     instance_type = config["training"]["instance_type"]
@@ -36,7 +37,7 @@ def main(args):
     batch_size = config["training"]["batch_size"]
     learning_rate = config["training"]["learning_rate"]
     s3_prefix = args.s3_prefix
-    
+
     # Create estimator
     estimator = HuggingFace(
         entry_point="train.py",
@@ -57,21 +58,23 @@ def main(args):
             "lora-r": config["model"]["peft"]["r"],
             "lora-alpha": config["model"]["peft"]["lora_alpha"],
             "lora-dropout": config["model"]["peft"]["dropout"],
-        }
+        },
     )
-    
+
     # Launch training
     logger.info(f"Launching job with config:")
     logger.info(f"  Model: {model_name}")
     logger.info(f"  Instance: {instance_type}")
     logger.info(f"  Epochs: {epochs}, Batch size: {batch_size}")
     logger.info(f"  Dataset: s3://{bucket}/{s3_prefix}/")
-    
-    estimator.fit({
-        "train": f"s3://{bucket}/{s3_prefix}/train.jsonl",
-        "validation": f"s3://{bucket}/{s3_prefix}/val.jsonl"
-    })
-    
+
+    estimator.fit(
+        {
+            "train": f"s3://{bucket}/{s3_prefix}/train.jsonl",
+            "validation": f"s3://{bucket}/{s3_prefix}/val.jsonl",
+        }
+    )
+
     logger.info(f"Training job complete: {estimator.latest_training_job.name}")
     logger.info(f"Model artifacts saved to: {estimator.model_uri}")
 
@@ -80,6 +83,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Launch SageMaker training job")
     parser.add_argument("--job-name", required=True, help="Training job name")
     parser.add_argument("--s3-prefix", default="llm", help="S3 prefix for dataset")
-    
+
     args = parser.parse_args()
     main(args)
