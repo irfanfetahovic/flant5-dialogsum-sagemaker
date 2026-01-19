@@ -16,12 +16,32 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model, TaskType
 
+try:
+    import mlflow
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    MLFLOW_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
 def main(args):
     """Main training function."""
+    
+    # Start MLflow run (optional, skips if not available)
+    if MLFLOW_AVAILABLE and args.use_mlflow:
+        mlflow.start_run()
+        mlflow.log_params({
+            "model_name": args.model_name,
+            "num_epochs": args.num_epochs,
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
+            "lora_r": args.lora_r,
+            "lora_alpha": args.lora_alpha,
+            "lora_dropout": args.lora_dropout,
+        })
+        logger.info("MLflow tracking enabled")
 
     # Model configuration
     model_id = args.model_name
@@ -77,7 +97,15 @@ def main(args):
     # LoRA configuration
     logger.info("Configuring LoRA")
     lora_config = LoraConfig(
-        r=args.lora_r,
+     
+    
+    # Log to MLflow
+    if MLFLOW_AVAILABLE and args.use_mlflow:
+        mlflow.log_metrics({
+            "trainable_params": trainable_params,
+            "total_params": total_params,
+            "trainable_percent": (trainable_params / total_params) * 100
+        })   r=args.lora_r,
         lora_alpha=args.lora_alpha,
         target_modules=["q", "v"],
         lora_dropout=args.lora_dropout,
@@ -112,12 +140,32 @@ def main(args):
     # Trainer
     trainer = Seq2SeqTrainer(
         model=model,
-        args=training_args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["validation"],
-        tokenizer=tokenizer,
-    )
+        a_result = trainer.train()
 
+    # Log training metrics to MLflow
+    if MLFLOW_AVAILABLE and args.use_mlflow:
+        mlflow.log_metrics({
+            "train_loss": train_result.training_loss,
+            "train_runtime": train_result.metrics.get("train_runtime", 0),
+            "train_samples_per_second": train_result.metrics.get("train_samples_per_second", 0),
+        })
+        
+        # Log final evaluation metrics
+        eval_metrics = trainer.evaluate()
+        mlflow.log_metrics({
+            "eval_loss": eval_metrics.get("eval_loss", 0),
+            "eval_runtime": eval_metrics.get("eval_runtime", 0),
+        })
+
+    # Save model
+    logger.info("Saving model to /opt/ml/model")
+    trainer.model.save_pretrained("/opt/ml/model")
+    parser.add_argument("--use-mlflow", action="store_true", help="Enable MLflow experiment tracking")
+    tokenizer.save_pretrained("/opt/ml/model")
+    
+    # End MLflow run
+    if MLFLOW_AVAILABLE and args.use_mlflow:
+        mlflow.end_run(
     # Train
     logger.info("Starting training")
     trainer.train()

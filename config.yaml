@@ -3,9 +3,9 @@ aws:
   bucket: llm-training-bucket
 
 dataset:
-  name: knkarthick/dialogsum
-  train_size: 125
-  val_size: 32
+  name: samsung/samsum  # Switched from knkarthick/dialogsum for better quality
+  train_size: 1000      # Scaled from 125
+  val_size: 200         # Scaled from 32
 
 model:
   name: google/flan-t5-base
@@ -19,7 +19,7 @@ training:
   instance_type: ml.m5.2xlarge
   instance_count: 1
   epochs: 3
-  batch_size: 2
+  batch_size: 4         # Increased from 2 for faster training
   learning_rate: 1e-3
   use_spot: true
   max_wait: 3600

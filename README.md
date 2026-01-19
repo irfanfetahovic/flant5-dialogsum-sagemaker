@@ -1,14 +1,18 @@
 # FLAN-T5-Base Dialog Summarization with SageMaker
 
+> 💼 **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](#) | [Get a Quote](mailto:your.email@example.com)
+>
+> 🔧 **For Developers:** [API Documentation](#api-endpoint) | [View on GitHub](#)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10-3.11](https://img.shields.io/badge/python-3.10--3.11-blue.svg)](https://www.python.org/downloads/)
 [![Transformers](https://img.shields.io/badge/transformers-4.36.0-orange)](https://huggingface.co/transformers/)
 
-A production-ready showcase project demonstrating fine-tuning **FLAN-T5-Base** on Amazon SageMaker for multi-turn dialog summarization using **LoRA/PEFT**, efficient parameter tuning, and cloud-native dataset management.
+**Technical Documentation** - A production-ready implementation of **FLAN-T5-Base** fine-tuned on Amazon SageMaker for multi-turn dialog summarization using **LoRA/PEFT**. This project demonstrates ML engineering best practices and cloud-native deployment patterns.
 
 ## 🎯 Overview
 
-This project demonstrates enterprise-grade LLM fine-tuning with:
+This project demonstrates LLM fine-tuning best practices with:
 - **Efficient Training**: LoRA adapter tuning (~6.8M trainable params vs 248M total)
 - **Cloud-Native**: Full SageMaker integration with spot instances for cost optimization
 - **Production Architecture**: Modular design, configuration management, and error handling
@@ -38,7 +42,22 @@ Lisa has been working on a new project and has made good progress with a fantast
 ├── .gitignore                     # Git ignore rules
 ├── .env.example                   # Environment variables template
 ├── CONTRIBUTING.md                # Contributing guidelines
+├── docs/
+│   ├── deployment.md              # Deployment guide
+│   └── FREELANCE_SHOWCASE.md      # Client-facing business case
+├── Makefile                       # Build automation
+├── pytest.ini                     # Pytest configuration
 ├── README.md                      # This file
+├── .github/
+│   └── workflows/                 # CI/CD workflows
+├── app/
+│   ├── demo_app.py                # Streamlit demo application
+│   └── .streamlit/                # Streamlit configuration
+├── api/
+│   ├── main.py                    # FastAPI application (production)
+│   ├── models.py                  # Pydantic request/response models
+│   ├── requirements.txt           # API-specific dependencies
+│   └── README.md                  # API deployment guide
 ├── notebooks/
 │   └── sagemaker_training.ipynb   # SageMaker Studio notebook
 ├── src/
@@ -50,13 +69,16 @@ Lisa has been working on a new project and has made good progress with a fantast
 ├── scripts/
 │   ├── prepare_dataset.py         # Prepare & upload dataset to S3
 │   ├── launch_training.py         # Launch SageMaker training job
+│   ├── deploy_endpoint.py         # Deploy model endpoint
 │   ├── evaluate.py                # Evaluate model with ROUGE metrics
-│   └── example_inference.py       # Example inference usage
+│   ├── example_inference.py       # Example inference usage
+│   └── benchmark.py               # Performance benchmarking
 ├── tests/
+│   ├── __init__.py
 │   ├── test_dataset_utils.py      # Dataset utilities tests
 │   └── test_inference.py          # Inference functions tests
-└── data/
-    └── jsonl/ (auto-created)
+└── data/                          # Auto-created during dataset preparation
+    └── jsonl/
         ├── train.jsonl
         └── val.jsonl
 ```
@@ -68,9 +90,9 @@ Lisa has been working on a new project and has made good progress with a fantast
 │                    Local Environment                         │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ 1. Prepare Dataset                                   │   │
-│  │    • Load DialogSum from HuggingFace                │   │
+│  │    • Load SAMSum from HuggingFace                    │   │
 │  │    • Convert to JSONL format                        │   │
-│  │    • Upload to S3 (125 train, 32 val samples)      │   │
+│  │    • Upload to S3 (1000 train, 200 val samples)     │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -81,9 +103,9 @@ Lisa has been working on a new project and has made good progress with a fantast
 │  │ 2. Training Job                                      │   │
 │  │    • Load FLAN-T5-Base (248M params)                │   │
 │  │    • Apply LoRA tuning (6.8M trainable params)      │   │
-│  │    • 3 epochs, batch size 2                         │   │
+│  │    • 3 epochs, batch size 4                         │   │
 │  │    • ml.m5.2xlarge instance (spot)                  │   │
-│  │    • Save weights to S3                             │   │
+│  │    • Training time: ~3-4 hours for 1000 samples     │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                      ▼                                       │
 │  ┌──────────────────────────────────────────────────────┐   │
@@ -99,12 +121,63 @@ Lisa has been working on a new project and has made good progress with a fantast
 
 ### Prerequisites
 
-- Python 3.10+
-- AWS account with SageMaker access
-- AWS credentials configured (`aws configure`)
+- Python 3.10 or 3.11
+- AWS account with SageMaker access (only for training)
+- AWS credentials configured (`aws configure`) (only for training)
 - ~2GB disk space
 
-### Installation & Usage
+### Try the Demo (No Training Required!)
+
+You can run the Streamlit demo immediately without any training:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the demo
+streamlit run app/demo_app.py
+```
+
+The app will use the base FLAN-T5 model (downloads automatically on first run). While not as accurate as a fine-tuned model, it will still generate reasonable summaries.
+
+### Use the Production API (FastAPI)
+
+For production deployments and client integrations, use the FastAPI endpoint:
+
+```bash
+# Install API dependencies
+pip install fastapi uvicorn pydantic
+
+# Run API server
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+API documentation and interactive testing:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
+**Model Loading Options:**
+```bash
+# Base model (default)
+uvicorn api.main:app --port 8000
+
+# With fine-tuned LoRA weights (local)
+export PEFT_WEIGHTS_PATH=/path/to/adapter
+uvicorn api.main:app --port 8000
+
+# With fine-tuned LoRA weights (S3)
+export PEFT_WEIGHTS_PATH=s3://bucket/path
+export AWS_ACCESS_KEY_ID=key
+export AWS_SECRET_ACCESS_KEY=secret
+pip install boto3
+uvicorn api.main:app --port 8000
+```
+
+See [api/README.md](api/README.md) for deployment options.
+
+### Full Training & Deployment
+
+For production-quality results, follow these steps:
 
 #### 1. Clone & Setup
 
@@ -126,12 +199,12 @@ aws configure
 #### 2. Prepare Dataset
 
 ```bash
-# Download DialogSum and upload to S3
-python scripts/prepare_dataset.py --train-size 125 --val-size 32
+# Download SAMSum and upload to S3
+python scripts/prepare_dataset.py --train-size 1000 --val-size 200
 ```
 
 This will:
-- Download DialogSum dataset from HuggingFace
+- Download SAMSum dataset from HuggingFace
 - Convert to JSONL format
 - Upload to your S3 bucket
 
@@ -166,6 +239,15 @@ python scripts/evaluate.py \
   --num-samples 100
 ```
 
+#### 6. (Optional) Benchmark Performance
+
+```bash
+python scripts/benchmark.py \
+  --model-id google/flan-t5-base \
+  --peft-weights s3://your-bucket/model-artifacts/path \
+  --num-samples 50
+```
+
 ## 📊 Results & Performance
 
 ### Model Efficiency
@@ -174,9 +256,10 @@ python scripts/evaluate.py \
 |--------|-------|
 | Base Model Parameters | 248M |
 | LoRA Trainable Parameters | 6.8M (2.7%) |
-| Training Time | ~45 min (3 epochs) |
+| Training Time | ~3-4 hours (3 epochs, 1000 samples) |
 | Instance Type | ml.m5.2xlarge (spot) |
-| Estimated Cost | ~$2.50 |
+| Estimated Cost | ~$0.40 |
+| Dataset | SAMSum (1000 training, 200 validation) |
 
 ### Evaluation Metrics (100 test samples)
 
@@ -187,9 +270,10 @@ python scripts/evaluate.py \
 | ROUGE-L | 0.398 |
 
 **Notes:**
-- Metrics computed on 100 test samples from DialogSum
+- Metrics computed on validation set from SAMSum (1000 training samples)
+- SAMSum dataset produces higher baseline ROUGE scores than DialogSum
 - ROUGE scores show good alignment with human-written reference summaries
-- Actual performance scales with dataset size (current: 125 training samples)
+- Actual performance will be better than small 125-sample baseline
 
 ### Example Outputs
 
@@ -223,20 +307,21 @@ Output: "The speaker is considering buying either a Toyota or Honda."
 - S3-hosted datasets
 - Automatic model versioning
 
-🔧 **Production Ready**
+🔧 **Well-Structured**
 - Modular architecture with separation of concerns
-- Comprehensive error handling and logging
+- Basic error handling and logging
 - Configuration management via YAML
-- Environment variable support for secrets
+- Environment variable support for credentials
+- CI/CD pipeline for code quality
 
 📦 **Easy Integration**
 - Clean API for inference (`summarize_dialogue()`, `batch_summarize()`)
 - Support for both local and SageMaker environments
 - Pre-built evaluation scripts with ROUGE metrics
 
-## 🧪 Testing
+## 🧪 Testing & Monitoring
 
-Run the test suite:
+### Run Tests
 
 ```bash
 pytest tests/ -v
@@ -245,6 +330,42 @@ pytest tests/ -v
 # tests/test_dataset_utils.py::test_load_dialogsum_subset PASSED
 # tests/test_inference.py::test_summarize_dialogue PASSED
 ```
+
+### Experiment Tracking with MLflow
+
+Track training experiments locally:
+
+```bash
+# Install dependencies
+pip install mlflow
+
+# Run training with MLflow tracking
+python src/train.py --use-mlflow
+
+# View results in MLflow UI
+mlflow ui
+
+# Open browser to http://localhost:5000
+```
+
+MLflow tracks:
+- Hyperparameters (learning rate, batch size, LoRA config)
+- Training metrics (loss, runtime)
+- Model parameters (trainable vs total)
+
+### Performance Benchmarking
+
+Measure inference latency and throughput:
+
+```bash
+python scripts/benchmark.py --model-id google/flan-t5-base --num-samples 50
+```
+
+Benchmark metrics:
+- **Latency**: Average, P50, P95 response times
+- **Throughput**: Summaries per second
+- **Memory**: Model size and RAM usage
+- **Token speed**: Tokens generated per second
 
 ## 📝 Configuration
 
@@ -256,8 +377,9 @@ aws:
   bucket: llm-training-bucket
 
 dataset:
-  train_size: 125
-  val_size: 32
+  name: samsung/samsum         # SAMSum dataset (higher quality)
+  train_size: 1000             # 1000 training samples (scaled from 125)
+  val_size: 200                # 200 validation samples
 
 model:
   name: google/flan-t5-base
@@ -270,9 +392,9 @@ model:
 training:
   instance_type: ml.m5.2xlarge
   epochs: 3
-  batch_size: 2
+  batch_size: 4               # Increased from 2 for efficiency
   learning_rate: 1e-3
-  use_spot: true            # Cost optimization
+  use_spot: true              # Cost optimization (~70% cheaper)
 
 inference:
   max_new_tokens: 200
@@ -281,9 +403,23 @@ inference:
 
 ## 📚 Documentation
 
+### Quick Links
+- **[api/README.md](api/README.md)** - FastAPI deployment guide for Heroku, AWS, GCP, Docker
+- **[docs/deployment.md](docs/deployment.md)** - Traditional deployment guide
+- **[docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verifica
+### Additional Resources
+- [docs/deployment.md](docs/deployment.md) - Traditional deployment guide
+- [docs/FREELANCE_SHOWCASE.md](docs/FREELA
+- `mlflow==2.10.0` - Experiment tracking (optional)NCE_SHOWCASE.md) - Business overview & ROI
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
-- [src/inference.py](src/inference.py) - Inference API documentation
-- [config.yaml](config.yaml) - Configuration reference
+
+### Key Dependencies
+
+- `torch==2.1.0` - PyTorch framework
+- `transformers==4.36.0` - HuggingFace Transformers
+- `datasets==2.16.0` - HuggingFace Datasets (requires `pyarrow>=15.0.0`)
+- `peft==0.7.1` - Parameter-Efficient Fine-Tuning
+- `sagemaker==2.168.0` - AWS SageMaker SDK
 
 ## 🔐 Environment Variables
 
@@ -321,6 +457,34 @@ This project uses **Low-Rank Adaptation (LoRA)** to efficiently fine-tune FLAN-T
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+## 🚦 Production Readiness
+
+This project is designed as a **learning and demonstration tool**. To deploy in production, you should add:
+
+### Required for Production:
+- **Comprehensive Error Handling** - Retry logic, circuit breakers, graceful degradation
+- **Model Monitoring** - Track drift, performance degradation, data quality
+- **Security Hardening** - AWS Secrets Manager, input validation, authentication
+- **Automated Deployment** - Infrastructure as Code (Terraform/CloudFormation)
+- **Extensive Testing** - Integration tests, load tests, end-to-end tests
+- **Observability** - Structured logging, metrics (CloudWatch/Prometheus), distributed tracing
+- **Data Versioning** - DVC or MLflow for dataset and model versioning
+- **SLAs & Reliability** - Auto-scaling, health checks, disaster recovery
+- **Cost Optimization** - Resource monitoring, budget alerts, spot instance management
+
+### Current State:
+✅ Good code structure and modularity  
+✅ Basic CI/CD for code quality  
+✅ Configuration management  
+✅ Basic logging  
+⚠️ Limited error handling  
+⚠️ Minimal test coverage (unit tests only)  
+❌ No model monitoring  
+❌ No production deployment automation  
+❌ No secret management integration  
+
+See [deployment.md](deployment.md) for deployment guidelines.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
@@ -338,30 +502,6 @@ For questions or issues, please open a GitHub issue or contact the maintainers.
 
 ---
 
-**Made with ❤️ for production ML**
-- IAM user with `AmazonSageMakerFullAccess` + `AmazonS3FullAccess`
-- S3 bucket in same region as SageMaker
-- Local: `aws configure` with IAM credentials or `.env` file
+**Built as a learning resource for ML practitioners** 🎓
 
-## Configuration
-
-Edit `config.yaml` to customize:
-- Dataset size (train_size, val_size)
-- Model (flan-t5-base)
-- Training hyperparameters (epochs, batch_size, learning_rate)
-- Instance type & cost optimization
-
-## Cost & Performance
-
-- **Estimated training cost**: $1-3 USD
-- **Training time**: 5-15 minutes (ml.m5.2xlarge with spot instances)
-- **Expected ROUGE scores**:
-  - ROUGE-1: 0.35-0.42
-  - ROUGE-2: 0.15-0.20
-
-## References
-
-- [SageMaker Python SDK](https://sagemaker.readthedocs.io/)
-- [PEFT (LoRA)](https://github.com/huggingface/peft)
-- [FLAN-T5 Model Card](https://huggingface.co/google/flan-t5-base)
-- [DialogSum Dataset](https://huggingface.co/datasets/knkarthick/dialogsum)
+*For production deployments, review the [Production Readiness](#-production-readiness) section above.*
