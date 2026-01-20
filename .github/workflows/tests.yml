@@ -50,7 +50,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black mypy
+        pip install flake8 black==23.12.0 mypy
     
     - name: Check code formatting with black
       run: black --check src/ scripts/ tests/
