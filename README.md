@@ -2,7 +2,7 @@
 
 > 💼 **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](#) | [Get a Quote](mailto:your.email@example.com)
 >
-> 🔧 **For Developers:** [API Documentation](#api-endpoint) | [View on GitHub](#)
+> 🔧 **For Developers:** [API Documentation](#use-the-production-api-fastapi) | [View on GitHub](#)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10-3.11](https://img.shields.io/badge/python-3.10--3.11-blue.svg)](https://www.python.org/downloads/)
@@ -42,9 +42,12 @@ Lisa has been working on a new project and has made good progress with a fantast
 ├── .gitignore                     # Git ignore rules
 ├── .env.example                   # Environment variables template
 ├── CONTRIBUTING.md                # Contributing guidelines
+├── Dockerfile                     # Docker container definition
+├── Procfile                       # Heroku deployment configuration
 ├── docs/
 │   ├── deployment.md              # Deployment guide
-│   └── FREELANCE_SHOWCASE.md      # Client-facing business case
+│   ├── FREELANCE_SHOWCASE.md      # Client-facing business case
+│   └── QUICK_REFERENCE.md         # Quick reference guide
 ├── Makefile                       # Build automation
 ├── pytest.ini                     # Pytest configuration
 ├── README.md                      # This file
@@ -405,13 +408,12 @@ inference:
 
 ### Quick Links
 - **[api/README.md](api/README.md)** - FastAPI deployment guide for Heroku, AWS, GCP, Docker
-- **[docs/deployment.md](docs/deployment.md)** - Traditional deployment guide
-- **[docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verifica
+- **[docs/deployment.md](docs/deployment.md)** - Deployment guide and best practices
+- **[docs/FREELANCE_SHOWCASE.md](docs/FREELANCE_SHOWCASE.md)** - Business overview & ROI
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contributing guidelines
+
 ### Additional Resources
-- [docs/deployment.md](docs/deployment.md) - Traditional deployment guide
-- [docs/FREELANCE_SHOWCASE.md](docs/FREELA
-- `mlflow==2.10.0` - Experiment tracking (optional)NCE_SHOWCASE.md) - Business overview & ROI
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
+- [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) - Quick reference for commands and usage
 
 ### Key Dependencies
 
@@ -483,7 +485,7 @@ This project is designed as a **learning and demonstration tool**. To deploy in 
 ❌ No production deployment automation  
 ❌ No secret management integration  
 
-See [deployment.md](deployment.md) for deployment guidelines.
+See [docs/deployment.md](docs/deployment.md) for deployment guidelines.
 
 ## 📄 License
 

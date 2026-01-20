@@ -129,7 +129,9 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(description="Error message")
     detail: Optional[str] = Field(default=None, description="Additional details")
-    request_id: Optional[str] = Field(default=None, description="Request ID for tracking")
+    request_id: Optional[str] = Field(
+        default=None, description="Request ID for tracking"
+    )
 
     class Config:
         schema_extra = {

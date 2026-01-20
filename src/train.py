@@ -1,38 +1,33 @@
 """
-Training script for SageMaker jobs.
-Works both locally and in SageMaker training environment.
+Training script for SageMaker jobs and local runs.
+MLflow tracking is required and always enabled.
 """
 
-import torch
+import argparse
 import logging
 import os
-import argparse
+import mlflow
+import torch
 from datasets import load_dataset
+from peft import LoraConfig, TaskType, get_peft_model
 from transformers import (
-    AutoTokenizer,
     AutoModelForSeq2SeqLM,
-    Seq2SeqTrainingArguments,
+    AutoTokenizer,
     Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
 )
-from peft import LoraConfig, get_peft_model, TaskType
 
-try:
-    import mlflow
-    MLFLOW_AVAILABLE = True
-except ImportError:
-    MLFLOW_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def main(args):
-    """Main training function."""
-    
-    # Start MLflow run (optional, skips if not available)
-    if MLFLOW_AVAILABLE and args.use_mlflow:
-        mlflow.start_run()
-        mlflow.log_params({
+def main(args: argparse.Namespace):
+    """Main training entry point."""
+
+    mlflow.start_run()
+    mlflow.log_params(
+        {
             "model_name": args.model_name,
             "num_epochs": args.num_epochs,
             "batch_size": args.batch_size,
@@ -40,36 +35,33 @@ def main(args):
             "lora_r": args.lora_r,
             "lora_alpha": args.lora_alpha,
             "lora_dropout": args.lora_dropout,
-        })
-        logger.info("MLflow tracking enabled")
+            "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        }
+    )
+    logger.info("MLflow tracking enabled")
 
-    # Model configuration
     model_id = args.model_name
     logger.info(f"Loading model: {model_id}")
 
-    # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_id)
-    tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-    # Determine dataset paths (works in SageMaker and locally)
+    # Select dataset paths depending on environment (SageMaker vs local)
     if os.path.exists("/opt/ml/input/data/train/train.jsonl"):
-        # SageMaker training job
         train_path = "/opt/ml/input/data/train/train.jsonl"
         val_path = "/opt/ml/input/data/validation/val.jsonl"
         logger.info("Using SageMaker input paths")
     else:
-        # Local development
         train_path = "data/jsonl/train.jsonl"
         val_path = "data/jsonl/val.jsonl"
         logger.info("Using local paths")
 
-    # Load dataset
     logger.info(f"Loading dataset from {train_path}")
     dataset = load_dataset(
         "json", data_files={"train": train_path, "validation": val_path}
     )
 
-    # Tokenization function
     def tokenize(batch):
         start_prompt = "Summarize the following conversation:\n\n"
         end_prompt = "\n\nSummary: "
@@ -85,27 +77,16 @@ def main(args):
         batch["labels"] = tokenized_labels["input_ids"]
         return batch
 
-    # Apply tokenization
     logger.info("Tokenizing dataset")
     dataset = dataset.map(tokenize, batched=True)
     dataset = dataset.remove_columns(["instruction", "input", "output"])
 
-    # Load model
     logger.info(f"Loading base model: {model_id}")
     model = AutoModelForSeq2SeqLM.from_pretrained(model_id, torch_dtype=torch.float32)
 
-    # LoRA configuration
     logger.info("Configuring LoRA")
     lora_config = LoraConfig(
-     
-    
-    # Log to MLflow
-    if MLFLOW_AVAILABLE and args.use_mlflow:
-        mlflow.log_metrics({
-            "trainable_params": trainable_params,
-            "total_params": total_params,
-            "trainable_percent": (trainable_params / total_params) * 100
-        })   r=args.lora_r,
+        r=args.lora_r,
         lora_alpha=args.lora_alpha,
         target_modules=["q", "v"],
         lora_dropout=args.lora_dropout,
@@ -114,22 +95,27 @@ def main(args):
     )
     model = get_peft_model(model, lora_config)
 
-    # Print trainable parameters
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
     logger.info(
         f"Trainable params: {trainable_params:,} / Total params: {total_params:,}"
     )
+    mlflow.log_metrics(
+        {
+            "trainable_params": float(trainable_params),
+            "total_params": float(total_params),
+            "trainable_percent": float(trainable_params / total_params * 100),
+        }
+    )
 
-    # Training arguments
     training_args = Seq2SeqTrainingArguments(
-        output_dir="/opt/ml/model",
+        output_dir=args.output_dir,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         learning_rate=args.learning_rate,
         num_train_epochs=args.num_epochs,
-        fp16=False,  # CPU-friendly
+        fp16=False,
         logging_steps=10,
         evaluation_strategy="epoch",
         save_strategy="epoch",
@@ -137,49 +123,43 @@ def main(args):
         report_to=[],
     )
 
-    # Trainer
     trainer = Seq2SeqTrainer(
         model=model,
-        a_result = trainer.train()
+        args=training_args,
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["validation"],
+        tokenizer=tokenizer,
+    )
 
-    # Log training metrics to MLflow
-    if MLFLOW_AVAILABLE and args.use_mlflow:
-        mlflow.log_metrics({
-            "train_loss": train_result.training_loss,
-            "train_runtime": train_result.metrics.get("train_runtime", 0),
-            "train_samples_per_second": train_result.metrics.get("train_samples_per_second", 0),
-        })
-        
-        # Log final evaluation metrics
-        eval_metrics = trainer.evaluate()
-        mlflow.log_metrics({
-            "eval_loss": eval_metrics.get("eval_loss", 0),
-            "eval_runtime": eval_metrics.get("eval_runtime", 0),
-        })
-
-    # Save model
-    logger.info("Saving model to /opt/ml/model")
-    trainer.model.save_pretrained("/opt/ml/model")
-    parser.add_argument("--use-mlflow", action="store_true", help="Enable MLflow experiment tracking")
-    tokenizer.save_pretrained("/opt/ml/model")
-    
-    # End MLflow run
-    if MLFLOW_AVAILABLE and args.use_mlflow:
-        mlflow.end_run(
-    # Train
     logger.info("Starting training")
-    trainer.train()
+    train_result = trainer.train()
+    trainer.save_model(training_args.output_dir)
+    tokenizer.save_pretrained(training_args.output_dir)
 
-    # Save model
-    logger.info("Saving model to /opt/ml/model")
-    trainer.model.save_pretrained("/opt/ml/model")
-    tokenizer.save_pretrained("/opt/ml/model")
+    train_metrics = {
+        "train_loss": train_result.training_loss,
+        "train_runtime": train_result.metrics.get("train_runtime", 0),
+        "train_samples_per_second": train_result.metrics.get(
+            "train_samples_per_second", 0
+        ),
+    }
+    mlflow.log_metrics(train_metrics)
+
+    logger.info("Evaluating model")
+    eval_metrics = trainer.evaluate()
+    mlflow.log_metrics(eval_metrics)
+
+    if os.path.isdir(training_args.output_dir):
+        mlflow.log_artifacts(training_args.output_dir)
+    mlflow.end_run()
 
     logger.info("Training complete!")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Train FLAN-T5 dialog summarization with LoRA"
+    )
     parser.add_argument("--model-name", default="google/flan-t5-base", type=str)
     parser.add_argument("--num-epochs", default=3, type=int)
     parser.add_argument("--batch-size", default=2, type=int)
@@ -188,6 +168,6 @@ if __name__ == "__main__":
     parser.add_argument("--lora-r", default=8, type=int)
     parser.add_argument("--lora-alpha", default=16, type=int)
     parser.add_argument("--lora-dropout", default=0.05, type=float)
+    parser.add_argument("--output-dir", default="/opt/ml/model", type=str)
 
-    args = parser.parse_args()
-    main(args)
+    main(parser.parse_args())

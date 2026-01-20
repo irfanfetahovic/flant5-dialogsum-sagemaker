@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def load_dialogsum_subset(train_size: int = 1000, val_size: int = 200) -> Tuple:
     """
     Load SAMSum dataset with optional subsetting.
-    
+
     SAMSum is preferred over DialogSum for production use:
     - Larger dataset (16k samples)
     - Higher quality annotations

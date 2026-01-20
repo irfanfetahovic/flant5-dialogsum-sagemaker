@@ -50,50 +50,50 @@ _model_config = {}
 def load_model_with_peft():
     """
     Load base model and optionally merge LoRA weights.
-    
+
     Supports:
     - Base model only (MODEL_ID)
     - Base model + LoRA from local filesystem
     - Base model + LoRA from S3 bucket
-    
+
     Returns:
         tuple: (model, tokenizer)
     """
     global _model_config
-    
+
     model_id = os.getenv("MODEL_ID", "google/flan-t5-base")
     peft_weights_path = os.getenv("PEFT_WEIGHTS_PATH")
     peft_model_id = os.getenv("PEFT_MODEL_ID", model_id)
-    
+
     logger.info(f"Loading base model: {model_id}")
     model, tokenizer = load_base_model(model_id)
-    
+
     _model_config = {
         "model_id": model_id,
         "has_lora": False,
         "lora_path": None,
     }
-    
+
     if peft_weights_path:
         logger.info(f"Loading LoRA weights from: {peft_weights_path}")
         try:
             from peft import PeftModel
-            
+
             # Handle S3 paths
             if peft_weights_path.startswith("s3://"):
                 logger.info("Downloading LoRA weights from S3...")
                 import tempfile
                 import boto3
-                
+
                 s3_client = boto3.client("s3")
-                
+
                 # Parse S3 path
                 bucket, key = peft_weights_path.replace("s3://", "").split("/", 1)
-                
+
                 with tempfile.TemporaryDirectory() as tmpdir:
                     local_path = os.path.join(tmpdir, "adapter")
                     os.makedirs(local_path, exist_ok=True)
-                    
+
                     # Download all files in the prefix
                     paginator = s3_client.get_paginator("list_objects_v2")
                     for page in paginator.paginate(Bucket=bucket, Prefix=key):
@@ -103,29 +103,31 @@ def load_model_with_peft():
                             file_path = os.path.join(local_path, filename)
                             logger.info(f"Downloading: {s3_key} -> {file_path}")
                             s3_client.download_file(bucket, s3_key, file_path)
-                    
+
                     # Load PEFT model from local copy
                     model = PeftModel.from_pretrained(model, local_path)
                     logger.info("✅ LoRA weights loaded and merged from S3")
             else:
                 # Load from local filesystem
-                logger.info(f"Loading LoRA weights from local path: {peft_weights_path}")
+                logger.info(
+                    f"Loading LoRA weights from local path: {peft_weights_path}"
+                )
                 model = PeftModel.from_pretrained(model, peft_weights_path)
                 logger.info("✅ LoRA weights loaded and merged from filesystem")
-            
+
             # Merge LoRA weights into base model for inference
             model = model.merge_and_unload()
             logger.info("✅ LoRA weights merged into base model")
-            
+
             _model_config["has_lora"] = True
             _model_config["lora_path"] = peft_weights_path
-            
+
         except ImportError:
             logger.warning("PEFT library not available, loading base model only")
         except Exception as e:
             logger.error(f"Failed to load LoRA weights: {e}")
             logger.warning("Continuing with base model only")
-    
+
     return model, tokenizer
 
 
@@ -270,6 +272,8 @@ async def health_check_detailed():
         "version": "1.0.0",
         "timestamp": datetime.now(),
     }
+
+
 @app.post("/summarize", tags=["Summarization"], response_model=SummarizeResponse)
 async def summarize_single(request: SummarizeRequest):
     """
@@ -312,9 +316,7 @@ async def summarize_single(request: SummarizeRequest):
 
         processing_time = (time.time() - start_time) * 1000  # Convert to ms
 
-        logger.info(
-            f"[{request_id}] ✅ Summary generated in {processing_time:.1f}ms"
-        )
+        logger.info(f"[{request_id}] ✅ Summary generated in {processing_time:.1f}ms")
 
         return SummarizeResponse(
             dialogue=request.dialogue,
@@ -348,19 +350,13 @@ async def summarize_batch(request: BatchSummarizeRequest):
     - `total_time_ms`: Total processing time
     """
     request_id = uuid.uuid4()
-    logger.info(
-        f"[{request_id}] Batch request: {len(request.dialogues)} dialogues"
-    )
+    logger.info(f"[{request_id}] Batch request: {len(request.dialogues)} dialogues")
 
     if not _model_loaded or _model is None:
-        raise HTTPException(
-            status_code=503, detail="Model not available"
-        )
+        raise HTTPException(status_code=503, detail="Model not available")
 
     if not request.dialogues:
-        raise HTTPException(
-            status_code=400, detail="At least one dialogue required"
-        )
+        raise HTTPException(status_code=400, detail="At least one dialogue required")
 
     start_time = time.time()
     results = []
@@ -373,9 +369,7 @@ async def summarize_batch(request: BatchSummarizeRequest):
 
             # Validate individual item
             if not dialogue or len(dialogue.strip()) < 10:
-                logger.warning(
-                    f"[{request_id}] Item {idx}: Invalid (too short)"
-                )
+                logger.warning(f"[{request_id}] Item {idx}: Invalid (too short)")
                 failed += 1
                 continue
 
