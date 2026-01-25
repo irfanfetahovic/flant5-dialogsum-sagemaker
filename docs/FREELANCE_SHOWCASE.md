@@ -6,7 +6,7 @@
 
 Automatically summarize customer support conversations, sales calls, and team meetings.
 
-**[Try Live Demo](#)** | **[View Case Studies](#case-studies)** | **[Get a Quote](mailto:irfanfetahovic@gmail.com)**
+**[Try Live Demo](https://flant5-dialogsum-sagemaker-kn5q4fiv2tsuvcnhcga4l8.streamlit.app/)** | **[View Case Studies](#case-studies)** | **[Get a Quote](mailto:irfanfetahovic@gmail.com)**
 
 ---
 
@@ -331,7 +331,7 @@ Yes. The model runs in your AWS account. Your data never goes to third parties o
 ### Option 1: Try the Demo
 Experience the technology yourself - no setup required.
 
-**[Launch Demo](#)**
+**[Launch Demo](https://flant5-dialogsum-sagemaker-kn5q4fiv2tsuvcnhcga4l8.streamlit.app/)**
 
 ### Option 2: Schedule a Call
 Let's discuss your specific needs and calculate your ROI.
@@ -386,6 +386,6 @@ Questions? Want to discuss your specific use case? Reach out anytime.
 
 **Built with FLAN-T5 and Amazon SageMaker**
 
-[Technical Docs](../README.md) | [GitHub Repository](#) | [Live Demo](#)
+[Technical Docs](../README.md) | [GitHub Repository](https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker) | [Live Demo](https://flant5-dialogsum-sagemaker-kn5q4fiv2tsuvcnhcga4l8.streamlit.app/)
 
 </div>

@@ -1,6 +1,6 @@
 # FLAN-T5-Base Dialog Summarization with SageMaker
 
-> **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](#) | [Get a Quote](mailto:irfanfetahovic@gmail.com)
+> **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](https://flant5-dialogsum-sagemaker-kn5q4fiv2tsuvcnhcga4l8.streamlit.app/) | [Get a Quote](mailto:irfanfetahovic@gmail.com)
 >
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10-3.11](https://img.shields.io/badge/python-3.10--3.11-blue.svg)](https://www.python.org/downloads/)
