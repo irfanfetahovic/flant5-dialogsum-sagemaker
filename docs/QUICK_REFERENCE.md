@@ -1,4 +1,4 @@
-sh# Quick Reference: FastAPI Model Loading
+# Quick Reference: FastAPI Model Loading
 
 ## TL;DR - Get Started in 2 Minutes
 
@@ -124,34 +124,6 @@ curl http://localhost:8000/health/detailed
 
 ---
 
-## File Reference
-
-| File | Purpose |
-|------|---------|
-| `api/main.py` | Core FastAPI application |
-| `api/models.py` | Request/response schemas |
-| `api/requirements.txt` | API dependencies |
-| `api/README.md` | Full deployment guide |
-| `.env.example` | Environment variable template |
-| `docs/MODEL_LOADING_GUIDE.md` | Comprehensive model loading guide |
-| `docs/API_IMPLEMENTATION_SUMMARY.md` | Implementation details |
-| `docs/COMPLETE_EXAMPLE.md` | End-to-end workflow example |
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Model loads slowly | First run downloads ~2GB. Subsequent runs are faster. |
-| S3 access denied | Check AWS credentials and S3 bucket permissions |
-| PEFT not found | `pip install peft` |
-| Out of memory | Reduce model size or use serverless (Lambda/Cloud Run) |
-| Port 8000 in use | Use different port: `--port 8001` |
-| Module not found | `pip install -r api/requirements.txt` |
-
----
-
 ## Performance Estimates
 
 | Configuration | Startup | Inference | Memory |
@@ -162,40 +134,5 @@ curl http://localhost:8000/health/detailed
 
 *Startup time is first-run only (includes model download)*
 
----
 
-## Security Checklist
 
-- [ ] Never commit `.env` file
-- [ ] Use AWS IAM roles (not long-term credentials)
-- [ ] Enable S3 bucket encryption
-- [ ] Set API rate limits
-- [ ] Use HTTPS in production
-- [ ] Add authentication/API keys
-- [ ] Validate input lengths
-
-See [api/README.md](../api/README.md#security-considerations) for details.
-
----
-
-## Next Steps
-
-1. **Get Started:** Run with base model (`uvicorn api.main:app`)
-2. **Test API:** Visit http://localhost:8000/docs
-3. **Train Model:** `python scripts/launch_training.py`
-4. **Deploy:** `git push heroku main`
-5. **Share:** Add to your portfolio showcase
-
----
-
-## Documentation Links
-
-- **Full Guide:** [api/README.md](../api/README.md)
-- **Model Loading:** [docs/MODEL_LOADING_GUIDE.md](MODEL_LOADING_GUIDE.md)
-- **Implementation:** [docs/API_IMPLEMENTATION_SUMMARY.md](API_IMPLEMENTATION_SUMMARY.md)
-- **End-to-End:** [docs/COMPLETE_EXAMPLE.md](COMPLETE_EXAMPLE.md)
-- **Project:** [README.md](../README.md)
-
----
-
-**Questions?** Start with [docs/MODEL_LOADING_GUIDE.md](MODEL_LOADING_GUIDE.md) for detailed explanations.

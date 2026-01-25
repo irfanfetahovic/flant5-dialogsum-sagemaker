@@ -1,10 +1,27 @@
 # SageMaker Deployment Guide
 
 ## 0. Prerequisites
-- AWS credentials configured (`aws configure`) and a default region (e.g., `AWS_REGION` env var).
-- IAM role with SageMaker + S3 permissions; when running locally set `SAGEMAKER_ROLE_ARN` to that role.
-- An S3 bucket you can write to; by default the SDK will use the SageMaker default bucket.
-- Python 3.10+ and the project requirements installed.
+
+### AWS Setup (Required)
+
+**1. IAM User (for YOU to run scripts locally):**
+- Create an IAM user in AWS Console with programmatic access
+- Generate access keys (Access Key ID + Secret Access Key)
+- Attach policy: `AmazonSageMakerFullAccess` + S3 permissions
+- Install AWS CLI and run `aws configure` with these credentials
+- Set default region (e.g., `us-east-1`)
+
+**2. SageMaker Execution Role (for SageMaker to run jobs):**
+- AWS will auto-create this role when you first use SageMaker, OR
+- Create manually in IAM Console with trust policy for `sagemaker.amazonaws.com`
+- Attach policies: `AmazonSageMakerFullAccess` + S3 access
+- (Optional) Set `SAGEMAKER_ROLE_ARN` env var to the role ARN, or SDK will find/create it
+
+**3. S3 Bucket:**
+- An S3 bucket you can write to (SageMaker SDK will use default bucket if not specified)
+
+**4. Local Environment:**
+- Python 3.10+ and project dependencies installed
 
 ## 1. Install dependencies
 ```bash
@@ -12,11 +29,11 @@ pip install -r requirements.txt
 ```
 
 ## 2. Prepare and upload the dataset
-Runs DialogSum sampling, writes JSONL locally, and uploads to S3.
+Runs SAMSum sampling, writes JSONL locally, and uploads to S3.
 ```bash
 python scripts/prepare_dataset.py \
-  --train-size 125 \
-  --val-size 32 \
+  --train-size 1000 \
+  --val-size 150 \
   --s3-prefix llm
 ```
 Outputs go to `s3://<your-bucket>/llm/train.jsonl` and `s3://<your-bucket>/llm/val.jsonl`.
@@ -30,9 +47,8 @@ python scripts/launch_training.py \
 ```
 Note the `model_uri` (e.g., `s3://.../output/model.tar.gz`) printed when the job finishes; you'll need it to deploy.
 
-## 4. Deploy a real-time endpoint
+## 4. Deploy a real-time endpoint using the deployment script
 
-### Option A: Using the deployment script (recommended)
 ```bash
 python scripts/deploy_endpoint.py \
   --model-data s3://your-bucket/path/to/output/model.tar.gz \
@@ -41,30 +57,6 @@ python scripts/deploy_endpoint.py \
 ```
 
 This will deploy the endpoint and optionally run a test prediction.
-
-### Option B: Manual Python session
-In a Python session (Studio, notebook, or local with credentials):
-```python
-from sagemaker.huggingface import HuggingFaceModel
-from src.sagemaker_config import initialize_sagemaker
-
-session, role, bucket, region = initialize_sagemaker()
-
-model = HuggingFaceModel(
-    model_data="s3://your-bucket/path/to/output/model.tar.gz",  # from training job
-    role=role,
-    entry_point="inference.py",
-    source_dir="src",
-    transformers_version="4.36",
-    pytorch_version="2.1",
-    py_version="py310",
-)
-
-predictor = model.deploy(
-    instance_type="ml.m5.xlarge",
-    initial_instance_count=1,
-)
-```
 
 ### Quick test
 ```python
@@ -77,12 +69,6 @@ print(result)
 # Delete endpoint and config
 aws sagemaker delete-endpoint --endpoint-name flan-t5-dialogsum-endpoint
 aws sagemaker delete-endpoint-config --endpoint-config-name flan-t5-dialogsum-endpoint
-```
-
-Or in Python:
-```python
-predictor.delete_endpoint(delete_endpoint_config=True)
-predictor.delete_model()
 ```
 
 ## 5. Batch/offline inference (optional)

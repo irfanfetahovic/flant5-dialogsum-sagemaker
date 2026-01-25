@@ -10,7 +10,9 @@ import torch
 import psutil
 import os
 from typing import List, Dict
-from src.inference import load_model_and_tokenizer, summarize_dialogue
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from peft import PeftModel
+from src.inference import summarize_dialogue
 
 
 def measure_memory():
@@ -47,11 +49,26 @@ def benchmark_inference(
         print(f"With LoRA weights: {peft_weights}")
 
     mem_before = measure_memory()
-    model, tokenizer = load_model_and_tokenizer(model_id, peft_weights)
-    mem_after = measure_memory()
 
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_id, torch_dtype=torch.float32)
+
+    # Load LoRA weights if provided
+    if peft_weights:
+        model = PeftModel.from_pretrained(
+            model, peft_weights, torch_dtype=torch.float32, is_trainable=False
+        )
+
+    # Move to GPU if available and set to eval mode
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    print(f"Model loaded on {device}")
+
+    mem_after = measure_memory()
     model_memory = mem_after - mem_before
-    print(f"Model loaded. Memory usage: {model_memory:.1f} MB")
+    print(f"Memory usage: {model_memory:.1f} MB")
 
     # Prepare test data
     if test_dialogues is None:
@@ -64,6 +81,7 @@ def benchmark_inference(
         ]
 
     # Extend to num_samples by cycling
+    # multiply the list with * and slice to exact num_samples ([:num_samples])
     test_set = (test_dialogues * (num_samples // len(test_dialogues) + 1))[:num_samples]
 
     print(f"\nRunning {num_samples} inference samples...")

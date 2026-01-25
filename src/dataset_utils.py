@@ -7,22 +7,17 @@ import json
 from typing import Tuple, List
 import logging
 
+# Main application configures logging (logging.basicConfig), which affects all module loggers
 logger = logging.getLogger(__name__)
 
 
-def load_dialogsum_subset(train_size: int = 1000, val_size: int = 200) -> Tuple:
+def load_samsum_subset(train_size: int = 1000, val_size: int = 150) -> Tuple:
     """
     Load SAMSum dataset with optional subsetting.
 
-    SAMSum is preferred over DialogSum for production use:
-    - Larger dataset (16k samples)
-    - Higher quality annotations
-    - Better represents real-world conversations
-    - 5-10% higher baseline ROUGE scores
-
     Args:
         train_size: Number of training examples (default: 1000)
-        val_size: Number of validation examples (default: 200)
+        val_size: Number of validation examples (default: 150)
 
     Returns:
         Tuple of (train_dataset, val_dataset)
@@ -41,20 +36,31 @@ def load_dialogsum_subset(train_size: int = 1000, val_size: int = 200) -> Tuple:
     return train_subset, val_subset
 
 
-def save_jsonl(dataset_split, filename: str):
+# This function is used in prepare_dataset.py
+# JSONL = JSON Lines; Each line is a complete JSON object
+# JSONL is needed because LLM fine-tuning / instruction-tuning pipelines expect one JSON object per line, which is streamable, appendable, and memory-efficient — perfect for big datasets.
+# dataset_split is either train or val split (subset) from HuggingFace dataset
+def save_jsonl(dataset_split, filename: str, prompt_template: str = None):
     """
-    Convert HuggingFace dataset to JSONL format.
+    Convert HuggingFace dataset to JSONL format with pre-formatted prompts.
 
     Args:
         dataset_split: HuggingFace dataset split
         filename: Output filename
+        prompt_template: Template for formatting input. If None, uses default.
+                        Placeholder: {dialogue}
     """
+    if prompt_template is None:
+        prompt_template = (
+            "Summarize the following conversation:\n\n{dialogue}\n\nSummary:"
+        )
+
     logger.info(f"Saving dataset to {filename}")
     with open(filename, "w", encoding="utf-8") as f:
         for example in dataset_split:
+            formatted_input = prompt_template.format(dialogue=example["dialogue"])
             obj = {
-                "instruction": "Summarize the dialog",
-                "input": example["dialogue"].replace("\n", " "),
+                "input": formatted_input.replace("\n", " "),
                 "output": example["summary"].replace("\n", " "),
             }
             f.write(json.dumps(obj, ensure_ascii=False) + "\n")

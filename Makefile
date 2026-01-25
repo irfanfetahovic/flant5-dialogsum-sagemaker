@@ -45,7 +45,7 @@ clean:
 	rm -rf .coverage
 
 prepare-data:
-	python scripts/prepare_dataset.py --train-size 125 --val-size 32
+	python scripts/prepare_dataset.py --train-size 1000 --val-size 150
 
 run-example:
 	python scripts/example_inference.py --model-id google/flan-t5-base

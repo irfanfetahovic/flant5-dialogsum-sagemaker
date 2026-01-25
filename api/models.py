@@ -3,20 +3,22 @@ Pydantic models for FastAPI request/response validation.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic.types import constr
+from typing import List, Optional, Annotated
 from datetime import datetime
 
 
 class SummarizeRequest(BaseModel):
     """Request model for single summarization."""
 
+    # required field 'dialogue' with description and length constraints
     dialogue: str = Field(
         ...,
         description="The dialogue to summarize",
         min_length=10,
         max_length=4096,
-        example="Customer: Hi, I need help with my order.\nAgent: Of course! What's the issue?",
     )
+    # optional field 'max_tokens' with default value and constraints
     max_tokens: Optional[int] = Field(
         default=200, description="Maximum tokens in summary", le=500, ge=50
     )
@@ -56,11 +58,15 @@ class SummarizeResponse(BaseModel):
 class BatchSummarizeRequest(BaseModel):
     """Request model for batch summarization."""
 
-    dialogues: List[str] = Field(
+    # List of dialogues with length constraints.
+    # Annotated type is used to apply constraints to list elements.
+    dialogues: List[
+        Annotated[str, constr(min_length=10, max_length=4096, strip_whitespace=True)]
+    ] = Field(
         ...,
-        description="List of dialogues to summarize",
-        min_items=1,
-        max_items=100,
+        description="List of dialogues to summarize (each 10-4096 chars)",
+        min_length=1,
+        max_length=100,
     )
     max_tokens: Optional[int] = Field(default=200, description="Max tokens per summary")
 
@@ -118,6 +124,34 @@ class HealthResponse(BaseModel):
             "example": {
                 "status": "healthy",
                 "model_loaded": True,
+                "version": "1.0.0",
+                "timestamp": "2026-01-19T10:00:00",
+            }
+        }
+
+
+class HealthDetailedResponse(BaseModel):
+    """Detailed health check response with model configuration."""
+
+    status: str = Field(description="Service status (healthy/degraded/unhealthy)")
+    # Field is a Pydantic function that allows adding metadata and constraints to model attributes.
+    model_loaded: bool = Field(description="Is model loaded")
+    model_config: dict = Field(description="Model configuration details")
+    cuda_available: bool = Field(description="CUDA availability status")
+    version: str = Field(description="API version")
+    timestamp: datetime = Field(description="Response timestamp")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "status": "healthy",
+                "model_loaded": True,
+                "model_config": {
+                    "model_id": "google/flan-t5-base",
+                    "lora_merged": True,
+                    "lora_source": "s3://bucket/adapter",
+                },
+                "cuda_available": True,
                 "version": "1.0.0",
                 "timestamp": "2026-01-19T10:00:00",
             }

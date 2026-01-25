@@ -121,7 +121,7 @@ Found a bug? Please create an issue with:
 - Environment (Python version, OS, dependencies)
 - Error logs/traceback
 
-### ✨ Feature Requests
+### Feature Requests
 
 Have an idea? Submit an issue with:
 

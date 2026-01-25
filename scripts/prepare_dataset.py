@@ -1,12 +1,12 @@
 """
-Prepare DialogSum dataset and upload to S3.
+Prepare SAMSum dataset and upload to S3.
 Run this BEFORE training.
 """
 
 import os
 import logging
 import argparse
-from src.dataset_utils import load_dialogsum_subset, save_jsonl
+from src.dataset_utils import load_samsum_subset, save_jsonl
 from src.sagemaker_config import initialize_sagemaker
 import boto3
 
@@ -21,7 +21,7 @@ def main(args):
     session, role, bucket, region = initialize_sagemaker()
 
     # Load dataset
-    train_data, val_data = load_dialogsum_subset(
+    train_data, val_data = load_samsum_subset(
         train_size=args.train_size, val_size=args.val_size
     )
 
@@ -32,8 +32,8 @@ def main(args):
     train_path = "data/jsonl/train.jsonl"
     val_path = "data/jsonl/val.jsonl"
 
-    save_jsonl(train_data, train_path)
-    save_jsonl(val_data, val_path)
+    save_jsonl(train_data, train_path, args.prompt_template)
+    save_jsonl(val_data, val_path, args.prompt_template)
 
     # Upload to S3
     logger.info(f"Uploading to S3 bucket: {bucket}")
@@ -51,14 +51,19 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare DialogSum dataset")
+    parser = argparse.ArgumentParser(description="Prepare SAMSum dataset")
     parser.add_argument(
-        "--train-size", default=125, type=int, help="Number of training examples"
+        "--train-size", default=1000, type=int, help="Number of training examples"
     )
     parser.add_argument(
-        "--val-size", default=32, type=int, help="Number of validation examples"
+        "--val-size", default=150, type=int, help="Number of validation examples"
     )
     parser.add_argument("--s3-prefix", default="llm", help="S3 prefix for dataset")
+    parser.add_argument(
+        "--prompt-template",
+        default=None,
+        help="Prompt template for formatting input. Placeholder: {dialogue}. Default: 'Summarize the following conversation:\\n\\n{dialogue}\\n\\nSummary:'",
+    )
 
     args = parser.parse_args()
     main(args)

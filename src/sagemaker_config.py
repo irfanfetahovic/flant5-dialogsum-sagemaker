@@ -5,6 +5,7 @@ Handles session initialization, role management, and error handling.
 
 import sagemaker
 import os
+import yaml
 from typing import Tuple
 import logging
 
@@ -59,20 +60,42 @@ def get_execution_role() -> str:
         return role
 
 
-def initialize_sagemaker() -> Tuple[sagemaker.Session, str, str, str]:
+def initialize_sagemaker(bucket: str = None) -> Tuple[sagemaker.Session, str, str, str]:
     """
     Initialize all SageMaker components.
+
+    Args:
+        bucket: Optional S3 bucket name. If not provided, loads from config.yaml,
+                or falls back to SageMaker default bucket.
 
     Returns:
         Tuple[sagemaker.Session, str, str, str]: (session, role, bucket, region)
     """
     session = get_sagemaker_session()
     role = get_execution_role()
-    bucket = session.default_bucket()
+
+    if bucket is None:
+        # Try loading from config.yaml first
+        try:
+            with open("config.yaml", "r") as f:
+                config = yaml.safe_load(f)
+                bucket = config.get("aws", {}).get("bucket")
+                if bucket:
+                    logger.info(f"Using bucket from config.yaml: {bucket}")
+        except (FileNotFoundError, KeyError):
+            logger.warning("config.yaml not found or missing aws.bucket")
+
+        # Fallback to SageMaker default if still None
+        if bucket is None:
+            bucket = session.default_bucket()
+            logger.info(f"Using SageMaker default bucket: {bucket}")
+    else:
+        logger.info(f"Using provided bucket: {bucket}")
+
     region = session.boto_region_name
 
     logger.info(f"AWS Region: {region}")
-    logger.info(f"Default S3 Bucket: {bucket}")
+    logger.info(f"S3 Bucket: {bucket}")
     logger.info(f"Execution Role: {role}")
 
     return session, role, bucket, region

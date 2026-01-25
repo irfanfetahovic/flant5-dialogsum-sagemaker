@@ -67,7 +67,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deploy SageMaker endpoint")
     parser.add_argument(
-        "--model-data",
+        "--model-data",  # The exact model data URI is printed when the training completes.
         required=True,
         help="S3 URI to model artifacts (e.g., s3://bucket/path/output/model.tar.gz)",
     )

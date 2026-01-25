@@ -1,22 +1,20 @@
 # FLAN-T5-Base Dialog Summarization with SageMaker
 
-> 💼 **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](#) | [Get a Quote](mailto:your.email@example.com)
+> **Looking for business overview and ROI?** See the [Client Showcase](docs/FREELANCE_SHOWCASE.md) | [Try Live Demo](#) | [Get a Quote](mailto:irfanfetahovic@gmail.com)
 >
-> 🔧 **For Developers:** [API Documentation](#use-the-production-api-fastapi) | [View on GitHub](#)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10-3.11](https://img.shields.io/badge/python-3.10--3.11-blue.svg)](https://www.python.org/downloads/)
 [![Transformers](https://img.shields.io/badge/transformers-4.36.0-orange)](https://huggingface.co/transformers/)
 
 **Technical Documentation** - A production-ready implementation of **FLAN-T5-Base** fine-tuned on Amazon SageMaker for multi-turn dialog summarization using **LoRA/PEFT**. This project demonstrates ML engineering best practices and cloud-native deployment patterns.
 
-## 🎯 Overview
+## Overview
 
 This project demonstrates LLM fine-tuning best practices with:
 - **Efficient Training**: LoRA adapter tuning (~6.8M trainable params vs 248M total)
 - **Cloud-Native**: Full SageMaker integration with spot instances for cost optimization
 - **Production Architecture**: Modular design, configuration management, and error handling
-- **Real-world Task**: Abstractive dialog summarization from the DialogSum dataset
+- **Real-world Task**: Abstractive dialog summarization from the SAMSum dataset
 
 ### Example
 
@@ -46,8 +44,7 @@ Lisa has been working on a new project and has made good progress with a fantast
 ├── Procfile                       # Heroku deployment configuration
 ├── docs/
 │   ├── deployment.md              # Deployment guide
-│   ├── FREELANCE_SHOWCASE.md      # Client-facing business case
-│   └── QUICK_REFERENCE.md         # Quick reference guide
+│   └── FREELANCE_SHOWCASE.md      # Client-facing business case
 ├── Makefile                       # Build automation
 ├── pytest.ini                     # Pytest configuration
 ├── README.md                      # This file
@@ -55,8 +52,10 @@ Lisa has been working on a new project and has made good progress with a fantast
 │   └── workflows/                 # CI/CD workflows
 ├── app/
 │   ├── demo_app.py                # Streamlit demo application
+│   ├── README.md                  # Demo app documentation
 │   └── .streamlit/                # Streamlit configuration
 ├── api/
+│   ├── __init__.py
 │   ├── main.py                    # FastAPI application (production)
 │   ├── models.py                  # Pydantic request/response models
 │   ├── requirements.txt           # API-specific dependencies
@@ -86,7 +85,7 @@ Lisa has been working on a new project and has made good progress with a fantast
         └── val.jsonl
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -120,7 +119,7 @@ Lisa has been working on a new project and has made good progress with a fantast
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -185,7 +184,7 @@ For production-quality results, follow these steps:
 #### 1. Clone & Setup
 
 ```bash
-git clone https://github.com/yourusername/flan-t5-base-dialogsum-sagemaker.git
+git clone https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker.git
 cd flan-t5-base-dialogsum-sagemaker
 
 # Create virtual environment
@@ -203,7 +202,7 @@ aws configure
 
 ```bash
 # Download SAMSum and upload to S3
-python scripts/prepare_dataset.py --train-size 1000 --val-size 200
+python scripts/prepare_dataset.py --train-size 1000 --val-size 150
 ```
 
 This will:
@@ -215,7 +214,7 @@ This will:
 
 ```bash
 # Via CLI
-python scripts/launch_training.py --job-name my-dialogsum-job --s3-prefix llm
+python scripts/launch_training.py --job-name my-samsum-job --s3-prefix llm
 
 # Or open the notebook in SageMaker Studio
 # notebooks/sagemaker_training.ipynb
@@ -239,10 +238,35 @@ python scripts/example_inference.py \
 python scripts/evaluate.py \
   --model-id google/flan-t5-base \
   --peft-weights s3://your-bucket/model-artifacts/path \
-  --num-samples 100
+  --num-samples 150
 ```
 
-#### 6. (Optional) Benchmark Performance
+#### 6. Deploy to Production
+
+Choose your deployment option:
+
+**Option A: SageMaker Endpoint** (Real-time inference)
+```bash
+python scripts/deploy_endpoint.py \
+  --model-data s3://your-bucket/model-artifacts/path/model.tar.gz \
+  --endpoint-name dialogsum-endpoint \
+  --instance-type ml.m5.xlarge
+```
+
+**Option B: FastAPI on AWS ECS/EC2** (Containerized deployment)
+```bash
+# Build and deploy Docker container
+docker build -t dialogsum-api:latest .
+docker tag dialogsum-api:latest {account}.dkr.ecr.us-east-1.amazonaws.com/dialogsum-api:latest
+docker push {account}.dkr.ecr.us-east-1.amazonaws.com/dialogsum-api:latest
+
+# Deploy to ECS or EC2
+# See api/README.md for detailed deployment instructions
+```
+
+See [docs/deployment.md](docs/deployment.md) and [api/README.md](api/README.md) for detailed deployment guides.
+
+#### 7. (Optional) Benchmark Performance
 
 ```bash
 python scripts/benchmark.py \
@@ -251,7 +275,7 @@ python scripts/benchmark.py \
   --num-samples 50
 ```
 
-## 📊 Results & Performance
+## Results & Performance
 
 ### Model Efficiency
 
@@ -278,51 +302,32 @@ python scripts/benchmark.py \
 - ROUGE scores show good alignment with human-written reference summaries
 - Actual performance will be better than small 125-sample baseline
 
-### Example Outputs
+## Key Features
 
-**Example 1:**
-```
-Input:  "Did you see the game last night? It was amazing! 
-         The final score was 3-2. What did you think?"
-
-Output: "The game had a final score of 3-2."
-```
-
-**Example 2:**
-```
-Input:  "I've been thinking about getting a new car. 
-         I like the Toyota, but I've also heard good things about Honda.
-         Do you have any suggestions?"
-
-Output: "The speaker is considering buying either a Toyota or Honda."
-```
-
-## 💡 Key Features
-
-✨ **Efficient Fine-tuning**
+**Efficient Fine-tuning**
 - LoRA adaptation reduces trainable parameters by 97.3%
 - Faster training and inference compared to full model tuning
 - Lower memory footprint
 
-☁️ **Cloud-Native Design**
+**Cloud-Native Design**
 - Full AWS SageMaker integration
 - Spot instance support for cost optimization
 - S3-hosted datasets
 - Automatic model versioning
 
-🔧 **Well-Structured**
+**Well-Structured**
 - Modular architecture with separation of concerns
 - Basic error handling and logging
 - Configuration management via YAML
 - Environment variable support for credentials
 - CI/CD pipeline for code quality
 
-📦 **Easy Integration**
+**Easy Integration**
 - Clean API for inference (`summarize_dialogue()`, `batch_summarize()`)
 - Support for both local and SageMaker environments
 - Pre-built evaluation scripts with ROUGE metrics
 
-## 🧪 Testing & Monitoring
+## Testing & Monitoring
 
 ### Run Tests
 
@@ -330,7 +335,7 @@ Output: "The speaker is considering buying either a Toyota or Honda."
 pytest tests/ -v
 
 # Output:
-# tests/test_dataset_utils.py::test_load_dialogsum_subset PASSED
+# tests/test_dataset_utils.py::test_save_and_load_jsonl PASSED
 # tests/test_inference.py::test_summarize_dialogue PASSED
 ```
 
@@ -370,7 +375,7 @@ Benchmark metrics:
 - **Memory**: Model size and RAM usage
 - **Token speed**: Tokens generated per second
 
-## 📝 Configuration
+## Configuration
 
 Edit `config.yaml` to customize:
 
@@ -381,8 +386,8 @@ aws:
 
 dataset:
   name: samsung/samsum         # SAMSum dataset (higher quality)
-  train_size: 1000             # 1000 training samples (scaled from 125)
-  val_size: 200                # 200 validation samples
+  train_size: 1000             # 1000 training samples
+  val_size: 150                # 150 validation samples
 
 model:
   name: google/flan-t5-base
@@ -404,16 +409,14 @@ inference:
   num_beams: 1
 ```
 
-## 📚 Documentation
+## Documentation
 
 ### Quick Links
-- **[api/README.md](api/README.md)** - FastAPI deployment guide for Heroku, AWS, GCP, Docker
+- **[api/README.md](api/README.md)** - FastAPI deployment guide
 - **[docs/deployment.md](docs/deployment.md)** - Deployment guide and best practices
 - **[docs/FREELANCE_SHOWCASE.md](docs/FREELANCE_SHOWCASE.md)** - Business overview & ROI
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contributing guidelines
 
-### Additional Resources
-- [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) - Quick reference for commands and usage
 
 ### Key Dependencies
 
@@ -423,7 +426,7 @@ inference:
 - `peft==0.7.1` - Parameter-Efficient Fine-Tuning
 - `sagemaker==2.168.0` - AWS SageMaker SDK
 
-## 🔐 Environment Variables
+## Environment Variables
 
 Copy `.env.example` to `.env` and fill with your values:
 
@@ -437,7 +440,7 @@ AWS_REGION=us-east-1
 AWS_BUCKET=llm-training-bucket
 ```
 
-## 📖 How It Works
+## How It Works
 
 ### Fine-tuning with LoRA
 
@@ -453,57 +456,46 @@ This project uses **Low-Rank Adaptation (LoRA)** to efficiently fine-tune FLAN-T
 1. Load base FLAN-T5 model
 2. Load LoRA weights from S3
 3. Merge weights for inference
-4. Generate summary using greedy decoding
+4. Generate summary
 
-## 🤝 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 🚦 Production Readiness
+## Production Readiness
 
-This project is designed as a **learning and demonstration tool**. To deploy in production, you should add:
+This project demonstrates **production-grade architecture patterns** with working implementations of key ML engineering practices. It serves as a strong foundation for production deployments.
 
-### Required for Production:
-- **Comprehensive Error Handling** - Retry logic, circuit breakers, graceful degradation
-- **Model Monitoring** - Track drift, performance degradation, data quality
-- **Security Hardening** - AWS Secrets Manager, input validation, authentication
-- **Automated Deployment** - Infrastructure as Code (Terraform/CloudFormation)
-- **Extensive Testing** - Integration tests, load tests, end-to-end tests
-- **Observability** - Structured logging, metrics (CloudWatch/Prometheus), distributed tracing
-- **Data Versioning** - DVC or MLflow for dataset and model versioning
-- **SLAs & Reliability** - Auto-scaling, health checks, disaster recovery
-- **Cost Optimization** - Resource monitoring, budget alerts, spot instance management
+### What's Included:
+- ✅ Good code structure and modularity  
+- ✅ Basic CI/CD for code quality  
+- ✅ Configuration management  
+- ✅ Basic logging  
+- ✅ Error handling fundamentals
+- ✅ Unit test coverage for core functionality
+- ✅ Cloud deployment patterns (SageMaker, S3)
+- ✅ Production API (FastAPI)
+- ✅ Docker support
 
-### Current State:
-✅ Good code structure and modularity  
-✅ Basic CI/CD for code quality  
-✅ Configuration management  
-✅ Basic logging  
-⚠️ Limited error handling  
-⚠️ Minimal test coverage (unit tests only)  
-❌ No model monitoring  
-❌ No production deployment automation  
-❌ No secret management integration  
+### Additional Considerations for Enterprise Scale:
+For large-scale enterprise deployments, you may want to enhance:
+- **Advanced Monitoring** - Model drift detection, A/B testing frameworks
+- **Enhanced Security** - AWS Secrets Manager integration, advanced authentication
+- **Infrastructure as Code** - Terraform/CloudFormation for automated provisioning
+- **Comprehensive Testing** - Load tests, integration tests, end-to-end tests
+- **Advanced Observability** - Distributed tracing, custom metrics dashboards
+- **Compliance** - Industry-specific certifications (HIPAA, SOC2)
 
-See [docs/deployment.md](docs/deployment.md) for deployment guidelines.
+**Current state is suitable for:** Small-to-medium deployments, proof-of-concepts, and organizations with in-house DevOps support.
 
-## 📄 License
+See [docs/deployment.md](docs/deployment.md) and [api/README.md](api/README.md)for deployment guidelines.
+
+## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- [DialogSum Dataset](https://huggingface.co/datasets/knkarthick/dialogsum) - Dialogue summarization dataset
-- [FLAN-T5](https://huggingface.co/google/flan-t5-base) - Google's instruction-tuned T5 model
-- [PEFT](https://github.com/huggingface/peft) - Parameter-Efficient Fine-Tuning library
-- [AWS SageMaker](https://aws.amazon.com/sagemaker/) - Cloud training platform
-
-## 📧 Contact
+## Contact
 
 For questions or issues, please open a GitHub issue or contact the maintainers.
 
----
 
-**Built as a learning resource for ML practitioners** 🎓
-
-*For production deployments, review the [Production Readiness](#-production-readiness) section above.*

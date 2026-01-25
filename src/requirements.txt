@@ -1,0 +1,6 @@
+# Minimal dependencies for SageMaker inference endpoint
+# Only includes packages needed for model loading and inference
+
+torch==2.1.0
+transformers==4.36.0
+peft==0.7.1

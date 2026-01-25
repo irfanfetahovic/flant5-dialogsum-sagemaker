@@ -5,9 +5,11 @@ Evaluate dialog summarization model using ROUGE metrics.
 import argparse
 import logging
 from datasets import load_dataset
+import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel
 import evaluate
+import torch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,8 +19,8 @@ def main(args):
     """Evaluate model on test set."""
 
     # Load dataset
-    logger.info("Loading DialogSum test set")
-    dataset = load_dataset("knkarthick/dialogsum")
+    logger.info("Loading SAMSum test set")
+    dataset = load_dataset("samsung/samsum")
     test_data = dataset["test"].select(
         range(min(args.num_samples, len(dataset["test"])))
     )
@@ -38,6 +40,12 @@ def main(args):
             model, args.peft_weights, torch_dtype="auto", is_trainable=False
         )
 
+    # Move to GPU if available and set to eval mode
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    logger.info(f"Model loaded on {device}")
+
     # Generate predictions
     logger.info(f"Generating predictions on {len(test_data)} samples")
     predictions = []
@@ -48,8 +56,9 @@ def main(args):
             logger.info(f"  Processed {i + 1}/{len(test_data)}")
 
         prompt = f"Summarize the following conversation:\n\n{example['dialogue']}\n\nSummary:"
-        inputs = tokenizer(prompt, return_tensors="pt")
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
+        # ** means unpacking the dictionary into keyword arguments, ie. passing them as named parameters inputs["input_ids"], inputs["attention_mask"], etc.
         outputs = model.generate(**inputs, max_new_tokens=200)
         prediction = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
@@ -91,7 +100,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--peft-weights", help="Path to LoRA weights")
     parser.add_argument(
-        "--num-samples", default=100, type=int, help="Number of test samples"
+        "--num-samples", default=150, type=int, help="Number of test samples"
     )
     parser.add_argument("--output-file", help="Output file for results")
 

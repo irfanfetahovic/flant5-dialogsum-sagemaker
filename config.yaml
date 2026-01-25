@@ -4,8 +4,8 @@ aws:
 
 dataset:
   name: samsung/samsum  # Switched from knkarthick/dialogsum for better quality
-  train_size: 1000      # Scaled from 125
-  val_size: 200         # Scaled from 32
+  train_size: 1000      # 1000 training samples
+  val_size: 150         # 150 validation samples
 
 model:
   name: google/flan-t5-base

@@ -2,11 +2,10 @@
 FastAPI application for dialog summarization inference.
 Production-ready with error handling, logging, and monitoring.
 
-Environment Variables:
+Environment Variables (can be set via export command, .env file, or platform config)
   - MODEL_ID: HuggingFace model to load (default: google/flan-t5-base)
   - PEFT_WEIGHTS_PATH: Path to LoRA weights (local or S3). If provided, LoRA adapter will be loaded and merged.
                        Example: s3://bucket/path/to/adapter or /local/path/to/adapter
-  - PEFT_MODEL_ID: Model ID used for fine-tuning (default: MODEL_ID)
   - API_KEY: Optional API key for request authentication
 """
 import logging
@@ -28,18 +27,21 @@ from api.models import (
     BatchSummarizeRequest,
     BatchSummarizeResponse,
     HealthResponse,
+    HealthDetailedResponse,
     ErrorResponse,
 )
 from src.inference import load_base_model, summarize_dialogue
 
 # Configure logging
+# Send INFO and above to console (only done once)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+# Set up global logger with module name so it is known where logs originate
 logger = logging.getLogger(__name__)
 
-# Global model state
+# Global model state (to load model once on startup)
 _model = None
 _tokenizer = None
 _model_loaded = False
@@ -62,15 +64,13 @@ def load_model_with_peft():
 
     model_id = os.getenv("MODEL_ID", "google/flan-t5-base")
     peft_weights_path = os.getenv("PEFT_WEIGHTS_PATH")
-    peft_model_id = os.getenv("PEFT_MODEL_ID", model_id)
-
     logger.info(f"Loading base model: {model_id}")
     model, tokenizer = load_base_model(model_id)
 
     _model_config = {
         "model_id": model_id,
-        "has_lora": False,
-        "lora_path": None,
+        "lora_merged": False,  # True if LoRA weights were merged into base model
+        "lora_source": None,  # Source path/URI of LoRA weights (metadata only after merge)
     }
 
     if peft_weights_path:
@@ -86,18 +86,26 @@ def load_model_with_peft():
 
                 s3_client = boto3.client("s3")
 
-                # Parse S3 path
+                # Parse S3 path (because boto3 does not accept s3:// URIs directly)
                 bucket, key = peft_weights_path.replace("s3://", "").split("/", 1)
-
+                # Create temporary directory to download files. It is needed because PeftModel expects a local path.
                 with tempfile.TemporaryDirectory() as tmpdir:
                     local_path = os.path.join(tmpdir, "adapter")
                     os.makedirs(local_path, exist_ok=True)
 
                     # Download all files in the prefix
+                    # Pagination is a process of iterating through multiple pages of results from S3
+                    # It is used because S3 can return a limited number of objects per request (usually 1000)
+                    # Example: One page contains 1000 objects, next page contains the next 1000, etc.
+
+                    # I want to list files from S3, but safely, page by page.
                     paginator = s3_client.get_paginator("list_objects_v2")
+                    # Iterate through each page of results. Each page is a dictionary with metadata and 'Contents' key.
+                    # Example: {'Contents': [{'Key': 'path/to/file1'}, {'Key': 'path/to/file2'}], ...}
                     for page in paginator.paginate(Bucket=bucket, Prefix=key):
                         for obj in page.get("Contents", []):
                             s3_key = obj["Key"]
+                            # Return only the filename to save in local_path (after the last '/')
                             filename = os.path.basename(s3_key)
                             file_path = os.path.join(local_path, filename)
                             logger.info(f"Downloading: {s3_key} -> {file_path}")
@@ -105,21 +113,21 @@ def load_model_with_peft():
 
                     # Load PEFT model from local copy
                     model = PeftModel.from_pretrained(model, local_path)
-                    logger.info("✅ LoRA weights loaded and merged from S3")
+                    logger.info("LoRA weights loaded and merged from S3")
             else:
                 # Load from local filesystem
                 logger.info(
                     f"Loading LoRA weights from local path: {peft_weights_path}"
                 )
                 model = PeftModel.from_pretrained(model, peft_weights_path)
-                logger.info("✅ LoRA weights loaded and merged from filesystem")
+                logger.info("LoRA weights loaded and merged from filesystem")
 
             # Merge LoRA weights into base model for inference
             model = model.merge_and_unload()
-            logger.info("✅ LoRA weights merged into base model")
+            logger.info("LoRA weights merged into base model")
 
-            _model_config["has_lora"] = True
-            _model_config["lora_path"] = peft_weights_path
+            _model_config["lora_merged"] = True
+            _model_config["lora_source"] = peft_weights_path
 
         except ImportError:
             logger.warning("PEFT library not available, loading base model only")
@@ -130,7 +138,10 @@ def load_model_with_peft():
     return model, tokenizer
 
 
+# Decorator function to extend the functionality of FastAPI app lifespan function
 @asynccontextmanager
+# Function to manage the lifespan of the FastAPI application.
+# It is called on startup by FastAPI to initialize resources and on shutdown to clean up.
 async def lifespan(app: FastAPI):
     """Manage app lifecycle - load model on startup, cleanup on shutdown."""
     global _model, _tokenizer, _model_loaded
@@ -142,15 +153,15 @@ async def lifespan(app: FastAPI):
     try:
         _model, _tokenizer = load_model_with_peft()
         _model_loaded = True
-        logger.info("✅ Model loaded successfully")
+        logger.info("Model loaded successfully")
         logger.info(f"   Model Config: {_model_config}")
     except Exception as e:
-        logger.error(f"❌ Failed to load model: {e}", exc_info=True)
+        logger.error(f"Failed to load model: {e}", exc_info=True)
         _model_loaded = False
-
+    # yield control back to FastAPI to start serving requests
     yield
 
-    # Shutdown
+    # Shutdown part - cleanup resources. It is called when the app is shutting down.
     logger.info("=" * 60)
     logger.info("SHUTDOWN: Cleaning up resources...")
     logger.info("=" * 60)
@@ -160,7 +171,7 @@ async def lifespan(app: FastAPI):
         if _tokenizer is not None:
             del _tokenizer
         torch.cuda.empty_cache()
-        logger.info("✅ Cleanup complete")
+        logger.info("Cleanup complete")
     except Exception as e:
         logger.error(f"Cleanup error: {e}")
 
@@ -173,36 +184,42 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add middleware
+# Add middleware (code that runs before/after each request)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to specific domains in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "*"
+    ],  # Change to specific domains in production, right now it allows all
+    allow_credentials=True,  # Allow cookies, authorization headers, etc.
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
-# Add compression
+# Add compression to HTTP responses, so they take less bandwidth when sent to clients
 app.add_middleware(GZIPMiddleware, minimum_size=1000)
 
 
-# Custom exception handler
+# Custom exception handler - called by FastAPI when unhandled exceptions occur in endpoints (routes)
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors."""
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     logger.error(f"[{request_id}] Unexpected error: {exc}", exc_info=True)
 
+    error = ErrorResponse(
+        error="Internal server error",
+        detail=str(exc) if logger.level == logging.DEBUG else None,
+        request_id=request_id,
+    )
+
     return JSONResponse(
         status_code=500,
-        content={
-            "error": "Internal server error",
-            "detail": str(exc) if logger.level == logging.DEBUG else None,
-            "request_id": request_id,
-        },
+        # Convert Pydantic model to dict for JSON response
+        content=error.model_dump(),
     )
 
 
+# Decorator that tells FastAPI to use the function bellow as middleware for all HTTP requests
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     """Add request ID to all requests for tracking."""
@@ -250,27 +267,29 @@ async def health_check():
     )
 
 
-@app.get("/health/detailed", tags=["Health"])
+@app.get("/health/detailed", tags=["Health"], response_model=HealthDetailedResponse)
 async def health_check_detailed():
     """Detailed health check with model configuration."""
     from datetime import datetime
 
     if not _model_loaded:
-        return {
-            "status": "unhealthy",
-            "model_loaded": False,
-            "model_config": {},
-            "timestamp": datetime.now(),
-        }
+        return HealthDetailedResponse(
+            status="unhealthy",
+            model_loaded=False,
+            model_config={},
+            cuda_available=torch.cuda.is_available(),
+            version="1.0.0",
+            timestamp=datetime.now(),
+        )
 
-    return {
-        "status": "healthy",
-        "model_loaded": True,
-        "model_config": _model_config,
-        "cuda_available": torch.cuda.is_available(),
-        "version": "1.0.0",
-        "timestamp": datetime.now(),
-    }
+    return HealthDetailedResponse(
+        status="healthy",
+        model_loaded=True,
+        model_config=_model_config,
+        cuda_available=torch.cuda.is_available(),
+        version="1.0.0",
+        timestamp=datetime.now(),
+    )
 
 
 @app.post("/summarize", tags=["Summarization"], response_model=SummarizeResponse)
@@ -297,14 +316,6 @@ async def summarize_single(request: SummarizeRequest):
             status_code=503, detail="Model not available - service initializing"
         )
 
-    # Validate input
-    if not request.dialogue or len(request.dialogue.strip()) < 10:
-        logger.warning(f"[{request_id}] Invalid input - too short")
-        raise HTTPException(
-            status_code=400,
-            detail="Dialogue must be at least 10 characters",
-        )
-
     try:
         start_time = time.time()
 
@@ -315,7 +326,7 @@ async def summarize_single(request: SummarizeRequest):
 
         processing_time = (time.time() - start_time) * 1000  # Convert to ms
 
-        logger.info(f"[{request_id}] ✅ Summary generated in {processing_time:.1f}ms")
+        logger.info(f"[{request_id}] Summary generated in {processing_time:.1f}ms")
 
         return SummarizeResponse(
             dialogue=request.dialogue,
@@ -326,7 +337,7 @@ async def summarize_single(request: SummarizeRequest):
         )
 
     except Exception as e:
-        logger.error(f"[{request_id}] ❌ Error during summarization: {e}")
+        logger.error(f"[{request_id}] Error during summarization: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Error generating summary: {str(e)}",
@@ -354,9 +365,6 @@ async def summarize_batch(request: BatchSummarizeRequest):
     if not _model_loaded or _model is None:
         raise HTTPException(status_code=503, detail="Model not available")
 
-    if not request.dialogues:
-        raise HTTPException(status_code=400, detail="At least one dialogue required")
-
     start_time = time.time()
     results = []
     successful = 0
@@ -365,12 +373,6 @@ async def summarize_batch(request: BatchSummarizeRequest):
     for idx, dialogue in enumerate(request.dialogues):
         try:
             item_start = time.time()
-
-            # Validate individual item
-            if not dialogue or len(dialogue.strip()) < 10:
-                logger.warning(f"[{request_id}] Item {idx}: Invalid (too short)")
-                failed += 1
-                continue
 
             # Summarize
             summary = summarize_dialogue(
@@ -401,7 +403,7 @@ async def summarize_batch(request: BatchSummarizeRequest):
     total_time = (time.time() - start_time) * 1000
 
     logger.info(
-        f"[{request_id}] ✅ Batch complete: {successful} successful, {failed} failed in {total_time:.1f}ms"
+        f"[{request_id}] Batch complete: {successful} successful, {failed} failed in {total_time:.1f}ms"
     )
 
     return BatchSummarizeResponse(
@@ -418,10 +420,8 @@ async def get_stats():
     """Get model and system statistics."""
     return {
         "model": {
-            "name": "google/flan-t5-base",
-            "parameters": 248_000_000,
-            "trainable_parameters": 6_800_000,
             "loaded": _model_loaded,
+            "config": _model_config if _model_loaded else {},
         },
         "system": {
             "cuda_available": torch.cuda.is_available(),

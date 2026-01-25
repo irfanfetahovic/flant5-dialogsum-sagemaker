@@ -3,6 +3,13 @@ Streamlit demo app for dialog summarization.
 Serves both business clients and technical audiences.
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 import streamlit as st
 from src.inference import load_base_model, summarize_dialogue
 import logging
@@ -10,9 +17,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # Page config
-st.set_page_config(
-    page_title="AI Conversation Summarizer", page_icon="💬", layout="wide"
-)
+st.set_page_config(page_title="AI Conversation Summarizer", layout="wide")
 
 
 # Cache model loading
@@ -23,30 +28,30 @@ def load_model():
 
 
 # Business Header
-st.title("💬 AI Conversation Summarizer")
+st.title("AI Conversation Summarizer")
 st.markdown(
     "**Save 5+ hours per day** by automatically summarizing customer conversations, support tickets, and sales calls"
 )
 
 # Model status info
 st.info(
-    "ℹ️ **Demo Mode:** Using base FLAN-T5 model (no training required). For production-quality results, fine-tune the model using this project's training scripts."
+    "Demo Mode: Using base FLAN-T5 model (no training required). For production-quality results, fine-tune the model using this project's training scripts."
 )
 
 # Add CTA buttons in header
 col1, col2, col3 = st.columns([1, 1, 2])
 with col1:
     st.link_button(
-        "📁 View Case Studies",
-        "https://github.com/yourusername/flant5-dialogsum-sagemaker/blob/main/docs/FREELANCE_SHOWCASE.md",
+        "View Case Studies",
+        "https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker/blob/main/docs/FREELANCE_SHOWCASE.md",
     )
 with col2:
-    st.link_button("💬 Get a Quote", "mailto:your.email@example.com")
+    st.link_button("Get a Quote", "mailto:your.email@example.com")
 
 st.markdown("---")
 
 # Create tabs for different audiences
-tab1, tab2, tab3 = st.tabs(["🎯 Try Demo", "📈 Business Value", "🔧 Technical Details"])
+tab1, tab2, tab3 = st.tabs(["Try Demo", "Business Value", "Technical Details"])
 
 # Tab 1: Demo
 with tab1:
@@ -98,17 +103,17 @@ Manager: Great work, everyone. Let's reconnect on Friday for the code review."""
     col1, col2 = st.columns([1, 4])
     with col1:
         generate_button = st.button(
-            "✨ Generate Summary", type="primary", use_container_width=True
+            "Generate Summary", type="primary", use_container_width=True
         )
 
     if generate_button:
         if dialogue.strip():
             with st.spinner("Generating summary..."):
                 try:
-                    model, tokenizer, is_finetuned = load_model()
+                    model, tokenizer = load_model()
                     summary = summarize_dialogue(model, tokenizer, dialogue)
 
-                    st.success("✅ Summary Generated!")
+                    st.success("Summary Generated!")
                     st.markdown("### Summary:")
                     st.info(summary)
 
@@ -127,7 +132,7 @@ Manager: Great work, everyone. Let's reconnect on Friday for the code review."""
                 except Exception as e:
                     st.error(f"Error generating summary: {str(e)}")
                     st.info(
-                        "💡 **Note:** This demo requires the FLAN-T5 model to be downloaded (~1GB). On first run, it may take a few minutes to load."
+                        "Note: This demo requires the FLAN-T5 model to be downloaded (~1GB). On first run, it may take a few minutes to load."
                     )
         else:
             st.warning("Please enter a conversation to summarize.")
@@ -145,7 +150,7 @@ with tab2:
     )
 
     # ROI Calculator
-    st.markdown("### 💰 Calculate Your Savings")
+    st.markdown("### Calculate Your Savings")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -164,7 +169,11 @@ with tab2:
             "Average hourly rate ($)", min_value=10, value=30, step=5
         )
         time_saved_percent = st.slider(
-            "Time savings with AI (%)", min_value=50, max_value=90, value=80
+            "Time savings with AI (%)",
+            min_value=50,
+            max_value=90,
+            value=80,
+            key="time_saved_slider",
         )
 
     # Calculate savings
@@ -175,7 +184,7 @@ with tab2:
     monthly_savings = monthly_hours_saved * hourly_rate
     yearly_savings = monthly_savings * 12
 
-    st.markdown("### 📊 Your Potential Savings:")
+    st.markdown("### Your Potential Savings:")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -186,13 +195,13 @@ with tab2:
         st.metric("Yearly Savings", f"${yearly_savings:,.0f}")
 
     st.success(
-        f"💡 **ROI:** With typical implementation cost of $2,000-$5,000, you'll break even in less than {max(1, round(5000/monthly_savings))} month(s)!"
+        f"ROI: With typical implementation cost of $2,000-$5,000, you'll break even in less than {max(1, round(5000/monthly_savings))} month(s)!"
     )
 
     st.markdown("---")
 
     # Use cases
-    st.markdown("### 🎯 Perfect For:")
+    st.markdown("### Perfect For:")
 
     col1, col2, col3 = st.columns(3)
 
@@ -253,13 +262,15 @@ with tab3:
     | ROUGE-L | 0.366 | Longest common subsequence |
     | Latency | ~2s | Average response time (CPU) |
     
+    *Note: These are reference metrics from fine-tuned model evaluation on SAMSum dataset. Actual performance may vary based on your data and training configuration.*
+    
     ### Key Features
     
-    ✅ **Efficient:** Uses LoRA adapters for fast training and inference  
-    ✅ **Cost-effective:** ~$0.002 per summary vs $0.01+ for ChatGPT API  
-    ✅ **Customizable:** Can be fine-tuned on your specific conversations  
-    ✅ **Private:** Runs on your infrastructure, data never leaves your control  
-    ✅ **Scalable:** Deploy on AWS, GCP, Azure, or on-premise  
+    - **Efficient:** Uses LoRA adapters for fast training and inference  
+    - **Cost-effective:** Lower per-request costs compared to commercial API services when deployed at scale  
+    - **Customizable:** Can be fine-tuned on your specific conversations  
+    - **Private:** Runs on your infrastructure, data never leaves your control  
+    - **Scalable:** Deploy on AWS, GCP, Azure, or on-premise
     
     ### Integration Options
     
@@ -280,14 +291,14 @@ with tab3:
     
     ### Source Code
     
-    📂 [View on GitHub](https://github.com/yourusername/flant5-dialogsum-sagemaker)
+    📂 [View on GitHub](https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker)
     
     - Well-documented, modular code
     - Comprehensive tests with pytest
     - CI/CD ready
     - Production deployment guides
     
-    📖 [Full Technical Documentation](https://github.com/yourusername/flant5-dialogsum-sagemaker/blob/main/README.md)
+    📖 [Full Technical Documentation](https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker/blob/main/README.md)
     """
     )
 
@@ -296,7 +307,7 @@ st.markdown("---")
 st.markdown(
     """
 <div style='text-align: center'>
-    <p>Built with FLAN-T5 and Amazon SageMaker | <a href='https://github.com/yourusername/flant5-dialogsum-sagemaker/blob/main/README.md'>View Documentation</a> | <a href='mailto:your.email@example.com'>Contact for Custom Solutions</a></p>
+    <p>Built with FLAN-T5 and Amazon SageMaker | <a href='https://github.com/irfanfetahovic/flant5-dialogsum-sagemaker/blob/main/README.md'>View Documentation</a> | <a href='mailto:your.email@example.com'>Contact for Custom Solutions</a></p>
 </div>
 """,
     unsafe_allow_html=True,

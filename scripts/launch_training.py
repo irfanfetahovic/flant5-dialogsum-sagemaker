@@ -25,7 +25,7 @@ def main(args):
     # Load configuration
     config = load_config()
 
-    # Initialize SageMaker
+    # Initialize SageMaker (bucket loaded from config.yaml automatically)
     session, role, bucket, region = initialize_sagemaker()
 
     logger.info(f"Launching training job: {args.job_name}")

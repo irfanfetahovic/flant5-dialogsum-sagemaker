@@ -1,6 +1,5 @@
 """
 Training script for SageMaker jobs and local runs.
-MLflow tracking is required and always enabled.
 """
 
 import argparse
@@ -18,8 +17,8 @@ from transformers import (
 )
 
 
-logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def main(args: argparse.Namespace):
@@ -44,6 +43,7 @@ def main(args: argparse.Namespace):
     logger.info(f"Loading model: {model_id}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # Some models (like T5) may not have a pad token by default, so we set it to eos_token to make sure all examples in a batch have the same length.
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -53,6 +53,7 @@ def main(args: argparse.Namespace):
         val_path = "/opt/ml/input/data/validation/val.jsonl"
         logger.info("Using SageMaker input paths")
     else:
+        # run from the project root directory: eg. python src/train.py
         train_path = "data/jsonl/train.jsonl"
         val_path = "data/jsonl/val.jsonl"
         logger.info("Using local paths")
@@ -63,11 +64,8 @@ def main(args: argparse.Namespace):
     )
 
     def tokenize(batch):
-        start_prompt = "Summarize the following conversation:\n\n"
-        end_prompt = "\n\nSummary: "
-        inputs = [start_prompt + x + end_prompt for x in batch["input"]]
         tokenized_inputs = tokenizer(
-            inputs, padding="max_length", truncation=True, max_length=512
+            batch["input"], padding="max_length", truncation=True, max_length=512
         )
         tokenized_labels = tokenizer(
             batch["output"], padding="max_length", truncation=True, max_length=128
@@ -79,7 +77,7 @@ def main(args: argparse.Namespace):
 
     logger.info("Tokenizing dataset")
     dataset = dataset.map(tokenize, batched=True)
-    dataset = dataset.remove_columns(["instruction", "input", "output"])
+    dataset = dataset.remove_columns(["input", "output"])
 
     logger.info(f"Loading base model: {model_id}")
     model = AutoModelForSeq2SeqLM.from_pretrained(model_id, torch_dtype=torch.float32)

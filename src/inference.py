@@ -3,7 +3,7 @@ Inference functions for dialog summarization.
 """
 
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel
 import logging
 

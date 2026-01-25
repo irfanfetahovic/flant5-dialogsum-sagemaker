@@ -14,4 +14,7 @@ data/jsonl/
 ./dialogue-summary-training-*/
 .DS_Store
 *.ipynb_checkpoints
-PRODUCTION_IMPLEMENTATION_GUIDE.md
+docs/PRODUCTION_IMPLEMENTATION_GUIDE.md
+docs/QUICK_REFERENCE.md
+docs/BENCHMARK_IMPROVEMENTS.md
+api/README_detailed.md
