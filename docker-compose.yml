@@ -1,0 +1,80 @@
+# Base Docker Compose Configuration
+# This file contains ONLY the core API service
+# For monitoring stack, see docker-compose.monitoring.yml
+# For local dev, see docker-compose.override.yml (auto-loaded)
+# For production, use: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_DATE=${BUILD_DATE:-}
+        - VERSION=${VERSION:-1.0.0}
+    image: flan-t5-api:${VERSION:-latest}
+    container_name: flan-t5-api
+    
+    # Environment variables
+    environment:
+      # Model configuration
+      - MODEL_ID=${MODEL_ID:-google/flan-t5-base}
+      - PEFT_WEIGHTS_PATH=${PEFT_WEIGHTS_PATH:-}
+      
+      # Monitoring configuration
+      - PROMETHEUS_ENABLED=${PROMETHEUS_ENABLED:-true}
+      - METRICS_REQUIRE_AUTH=${METRICS_REQUIRE_AUTH:-true}
+      - METRICS_API_KEY=${METRICS_API_KEY}
+      
+      # CloudWatch (optional)
+      - CLOUDWATCH_ENABLED=${CLOUDWATCH_ENABLED:-false}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      
+      # Application settings
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - WORKERS=${WORKERS:-1}
+    
+    # Volumes
+    volumes:
+      - model-cache:/root/.cache/huggingface:rw
+      - ./logs:/app/logs:rw
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits (adjust based on your hardware)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - app-network
+
+# Named volumes
+volumes:
+  model-cache:
+    driver: local
+
+# Networks
+networks:
+  app-network:
+    driver: bridge
+    name: flan-t5-network

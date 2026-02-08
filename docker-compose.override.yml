@@ -1,0 +1,56 @@
+# Development Overrides
+# This file is AUTOMATICALLY loaded by docker-compose (override pattern)
+# Provides local development conveniences:
+# - Port mappings exposed
+# - Hot reload for code changes
+# - Relaxed security
+# - Debug settings
+
+version: '3.8'
+
+services:
+  api:
+    # Expose port for local access
+    ports:
+      - "8000:8000"
+    
+    # Mount source code for hot reload (optional - uncomment if needed)
+    # volumes:
+    #   - ./api:/app/api:ro
+    #   - ./src:/app/src:ro
+    
+    # Development environment overrides
+    environment:
+      - LOG_LEVEL=DEBUG
+      - METRICS_REQUIRE_AUTH=false  # Easier testing in dev
+      - RELOAD=true  # Enable hot reload if supported
+    
+    # Lower resource limits for local development
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'  # Use more CPU locally
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    
+    # Shorter health check for faster feedback
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+
+  # Expose monitoring ports for local debugging
+  prometheus:
+    ports:
+      - "9090:9090"
+  
+  alertmanager:
+    ports:
+      - "9093:9093"
+  
+  grafana:
+    ports:
+      - "3000:3000"

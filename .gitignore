@@ -1,20 +1,61 @@
+# ============================================
+# Secrets & Environment
+# ============================================
 .env
 .env.local
+.env.production
 *.pem
 *.key
 credentials.json
+
+# ============================================
+# Python
+# ============================================
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
 venv/
+*.ipynb_checkpoints
+
+# ============================================
+# Data & Models
+# ============================================
 data/jsonl/
 ./peft-dialogue-summary-model/
 ./peft-dialogue-summary-training-*/
 ./dialogue-summary-training-*/
+
+# ============================================
+# Docker - Runtime Data ONLY
+# ============================================
+# Keep docker-compose*.yml files in Git (they're configuration)
+# Only ignore runtime/generated data:
+logs/                    # Container logs
+backups/                 # Data backups
+*.log
+
+# Docker volumes are automatically not tracked (external to repo)
+# But if you mount local folders for development, ignore them:
+monitoring/prometheus-data/
+monitoring/alertmanager-data/
+monitoring/grafana-data/
+monitoring/README.md  # Ignore AI-generated monitoring docs (can be regenerated)
+
+# ============================================
+# OS & IDE
+# ============================================
 .DS_Store
-*.ipynb_checkpoints
-docs/PRODUCTION_IMPLEMENTATION_GUIDE.md
-docs/QUICK_REFERENCE.md
-docs/BENCHMARK_IMPROVEMENTS.md
-api/README_detailed.md
+Thumbs.db
+
+# ============================================
+# Temporary/AI-Generated Documentation
+# ============================================
+# These are AI-generated guides for FUTURE features (not implemented yet)
+# Can be regenerated when needed, no need to version control
+docs/PRODUCTION_IMPLEMENTATION_GUIDE.md   # How to add monitoring (when ready)
+docs/DOCKER_DEPLOYMENT_GUIDE.md            # How to deploy with Docker (when ready)
+docs/DOCKER_COMPOSE_FILES.md              # Explanation of multi-file Docker Compose pattern
+docs/QUICK_REFERENCE.md                   # AI-generated reference
+docs/BENCHMARK_IMPROVEMENTS.md            # Ideas for benchmark.py improvements
+api/README_detailed.md                    # AI-generated API docs
